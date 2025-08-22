@@ -25,6 +25,65 @@ from langchain import hub
 from langchain.agents import Tool, AgentExecutor, create_react_agent
 from langchain_community.tools import DuckDuckGoSearchRun
 from langchain_experimental.tools.python.tool import PythonAstREPLTool
+from langchain_openai import ChatOpenAI
+
+
+class OpenAIChatAgent:
+    def __init__(self, model_name: str, prompt_type="base"):
+        # 与 Azure 版本保持一致的温度与 max_tokens 设置
+        self.llm = ChatOpenAI(
+            model=model_name,
+            temperature=1.0,
+            max_tokens=4000,
+        )  # 读取环境变量 OPENAI_API_KEY [AI KNOWLEDGE]({})
+
+        self.prompt_type = prompt_type
+        if prompt_type == "base":
+            self.prompt_agent = BasePromptAgent()
+        elif prompt_type == "cot":
+            self.prompt_agent = ZeroShot_CoT_PromptAgent()
+        elif prompt_type == "few_shot_basic":
+            self.prompt_agent = FewShot_Basic_PromptAgent()
+        else:
+            self.prompt_agent = BasePromptAgent()
+
+    def call_agent(self, txt_file_path):
+        with open(txt_file_path, 'r') as txt_file:
+            connectivity_status = txt_file.read()
+
+        max_length = 127000
+        if len(connectivity_status) > max_length:
+            connectivity_status = connectivity_status[:max_length]  # 与现有实现一致 [T80](6)
+
+        # 复用与 AzureGPT4Agent 一致的 Prompt 选择逻辑
+        if self.prompt_type == "few_shot_semantic":
+            prompt = self.prompt_agent.get_few_shot_prompt(connectivity_status)
+            input_data = {"input": connectivity_status}
+        elif self.prompt_type in ["few_shot_basic"]:
+            prompt = self.prompt_agent.get_few_shot_prompt()
+            input_data = {"input": connectivity_status}
+        elif self.prompt_type == "cot":
+            base = self.prompt_agent.generate_prompt()
+            from langchain.prompts import PromptTemplate
+            prompt = PromptTemplate(
+                input_variables=["input"],
+                template=base + "Here is the connectivity status:\n{input}"
+            )
+            input_data = {"input": connectivity_status}
+        else:
+            from langchain.prompts import PromptTemplate
+            prompt = PromptTemplate(
+                input_variables=["input"],
+                template=self.prompt_agent.prompt_prefix + "Here is the connectivity status:\n{input}"
+            )
+            input_data = {"input": connectivity_status}
+
+        from langchain.chains import LLMChain
+        chain = LLMChain(llm=self.llm, prompt=prompt)  # 与现有链路一致 [T80](6)
+
+        response = chain.run(input_data) # 项目已有的抽取函数
+        return extract_command(response)
+
 
 def extract_command(text: str) -> str:
     """
@@ -46,8 +105,10 @@ class LLMAgent:
         # Call the output code from LLM agents file
         if llm_agent_type == "Qwen/Qwen2.5-72B-Instruct":
             self.llm_agent = QwenModel(prompt_type=prompt_type, num_gpus=num_gpus)
-        if llm_agent_type == "GPT-4o":
-            self.llm_agent = AzureGPT4Agent(prompt_type=prompt_type)
+        # if llm_agent_type == "GPT-4o":
+        #     self.llm_agent = AzureGPT4Agent(prompt_type=prompt_type)
+        if llm_agent_type in {"o4-mini", "gpt-4.1", "gpt-4o-mini", "gpt-4o"}:
+            self.llm_agent = OpenAIChatAgent(model_name=llm_agent_type, prompt_type=prompt_type)
         if llm_agent_type == "ReAct_Agent":
             self.llm_agent = ReAct_Agent(prompt_type=prompt_type)
         if llm_agent_type == "YourModel":
