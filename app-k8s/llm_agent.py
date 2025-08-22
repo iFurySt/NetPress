@@ -1,5 +1,4 @@
 from dotenv import load_dotenv
-from vllm import LLM, SamplingParams
 import os
 import re
 import time
@@ -10,13 +9,8 @@ os.environ["LANGCHAIN_TRACING_V2"] = "false"
 import warnings
 from langchain._api import LangChainDeprecationWarning
 warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
-from transformers import BitsAndBytesConfig
-import torch
-from huggingface_hub import login
 from prompt_agent import BasePromptAgent, ZeroShot_CoT_PromptAgent, FewShot_Basic_PromptAgent, ReAct_PromptAgent
 load_dotenv()
-huggingface_token = os.getenv("HUGGINGFACE_TOKEN")
-login(token=huggingface_token)
 from azure.identity import DefaultAzureCredential
 from langchain.chat_models import AzureChatOpenAI
 import getpass
@@ -197,6 +191,17 @@ class AzureGPT4Agent:
 
 class QwenModel:
     def __init__(self, prompt_type="base", num_gpus=1):
+        # Import vLLM and other dependencies only when needed
+        from vllm import LLM, SamplingParams
+        from transformers import BitsAndBytesConfig
+        import torch
+        from huggingface_hub import login
+        
+        # Login to Hugging Face only when using Qwen model
+        huggingface_token = os.getenv("HUGGINGFACE_TOKEN")
+        if huggingface_token:
+            login(token=huggingface_token)
+        
         self.prompt_type = prompt_type
         self.model_name = "Qwen/Qwen2.5-72B-Instruct-GPTQ-Int4"
         os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
