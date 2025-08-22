@@ -38,8 +38,8 @@ touch "$LOG_FILE"
 # Print the log file location
 echo "Log saved to $LOG_FILE"
 
-# Run the Python script and log the output
-nohup $(which python) run_workflow.py \
+# Run the Python script with output to stdout
+$(which python) run_workflow.py \
     --llm_agent_type "$LLM_AGENT_TYPE" \
     --num_queries "$NUM_QUERIES" \
     --root_dir "$ROOT_DIR" \
@@ -49,4 +49,4 @@ nohup $(which python) run_workflow.py \
     --config_gen "$CONFIG_GEN" \
     --prompt_type "$PROMPT_TYPE" \
     --num_gpus "$NUM_GPUS" \
-    --agent_test "$AGENT_TEST" > "$LOG_FILE" 2>&1 &
+    --agent_test "$AGENT_TEST"
