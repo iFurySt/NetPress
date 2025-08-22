@@ -20,3 +20,4 @@ app-malt/=0.26.0
 app-k8s/policies/*
 app-k8s/pod_deployment/*
 app-k8s/test.txt
+.envrc
