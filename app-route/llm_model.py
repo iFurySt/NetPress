@@ -51,7 +51,8 @@ class LLMModel:
         return [
             "Qwen/Qwen2.5-72B-Instruct",
             "GPT-Agent",
-            "ReAct_Agent"
+            "ReAct_Agent",
+            "OpenRouter"
         ]
 
     def __init__(self, model: str, max_new_tokens: int = 256, temperature: float = 0.1, device: str = "cuda", api_key: str = None, vllm: bool = True, prompt_type: str = "cot", num_gpus: int = 1):
@@ -93,6 +94,8 @@ class LLMModel:
             return self._initialize_gpt_agent()
         elif self.model_name == "ReAct_Agent":
             return self._initialize_react()
+        elif self.model_name == "OpenRouter":
+            return self._initialize_openrouter()
         elif self.model_name == "YourModel":
             return self._initialize_YourModel()
         else:
@@ -100,6 +103,11 @@ class LLMModel:
         
     def _initialize_react(self):
         return ReAct_Agent(prompt_type=self.prompt_type)
+
+    def _initialize_openrouter(self):
+        """Initialize the OpenRouter model."""
+        from openrouter_model import OpenRouterModel
+        return OpenRouterModel(prompt_type=self.prompt_type)
 
     def _initialize_qwen(self):
         """Initialize the Qwen model."""

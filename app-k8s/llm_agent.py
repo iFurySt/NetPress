@@ -105,6 +105,9 @@ class LLMAgent:
             self.llm_agent = OpenAIChatAgent(model_name=llm_agent_type, prompt_type=prompt_type)
         if llm_agent_type == "ReAct_Agent":
             self.llm_agent = ReAct_Agent(prompt_type=prompt_type)
+        if llm_agent_type == "OpenRouter":
+            from openrouter_agent import OpenRouterAgent
+            self.llm_agent = OpenRouterAgent(prompt_type=prompt_type)
         if llm_agent_type == "YourModel":
             # ====== TODO: Replace with your own model initialization if needed ======
             self.llm_agent = YourModel(prompt_type=prompt_type, num_gpus=num_gpus)

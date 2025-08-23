@@ -449,3 +449,85 @@ class ReAct_Agent:
         print("model returned")
         code = clean_up_llm_output_func(answer)
         return code
+
+
+class OpenRouterAgent:
+    def __init__(self, prompt_type="base", model_name="anthropic/claude-3.5-sonnet"):
+        self.model_name = model_name
+        
+        # Configure API key
+        if "OPENROUTER_API_KEY" not in os.environ:
+            os.environ["OPENROUTER_API_KEY"] = getpass.getpass("Enter your OpenRouter API key: ")
+        
+        # Initialize OpenAI client with OpenRouter endpoint
+        import openai
+        self.client = openai.OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=os.environ["OPENROUTER_API_KEY"],
+        )
+        
+        self.prompt_type = prompt_type
+        
+        # Store prompt agent for later use
+        if self.prompt_type == "cot":
+            self.prompt_agent = ZeroShot_CoT_PromptAgent()
+        elif self.prompt_type == "few_shot_basic":
+            self.prompt_agent = FewShot_Basic_PromptAgent()
+        elif self.prompt_type == "few_shot_semantic":
+            self.prompt_agent = FewShot_Semantic_PromptAgent()
+        else:
+            self.prompt_agent = BasePromptAgent()
+    
+    def call_agent(self, query):
+        print(f"Calling OpenRouter ({self.model_name}) with prompt type:", self.prompt_type)
+        
+        # Create prompt based on type
+        if self.prompt_type == "few_shot_semantic":
+            prompt_template = self.prompt_agent.get_few_shot_prompt(query)
+            prompt_text = prompt_template.format(input=query)
+        elif self.prompt_type in ["few_shot_basic"]:
+            prompt_template = self.prompt_agent.get_few_shot_prompt()
+            prompt_text = prompt_template.format(input=query)
+        else:
+            # For base/cot prompts
+            prompt_template = None
+            prompt_text = self.prompt_agent.prompt_prefix + prompt_suffix
+            prompt_text = prompt_text.format(input=query)
+
+        # Print prompt template
+        print("\nPrompt Template:")
+        print("-" * 80)
+        if isinstance(prompt_template, FewShotPromptTemplate):
+            print("Few Shot Prompt Template Configuration:")
+            print("\nInput Variables:", prompt_template.input_variables)
+            print("\nExamples:")
+            for i, example in enumerate(prompt_template.examples, 1):
+                print(f"\nExample {i}:")
+                print(f"Question: {example['question']}")
+                print(f"Answer: {example['answer']}")
+            print("\nExample Prompt Template:", prompt_template.example_prompt)
+            print("\nPrefix:", prompt_template.prefix)
+            print("\nSuffix:", prompt_template.suffix)
+        else:
+            print(prompt_text.strip())
+        print("-" * 80 + "\n")
+
+        try:
+            # Call OpenRouter API
+            response = self.client.chat.completions.create(
+                model=self.model_name,
+                messages=[
+                    {"role": "user", "content": prompt_text}
+                ],
+                temperature=0.0,
+                max_tokens=4000,
+            )
+            
+            answer = response.choices[0].message.content
+            print("model returned")
+            code = clean_up_llm_output_func(answer)
+            return code
+            
+        except Exception as e:
+            print(f"OpenRouter API error: {e}")
+            return ""
